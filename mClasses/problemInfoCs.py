@@ -1,10 +1,13 @@
 from dolfin import *
 import numpy as np
-#import matplotlib.pyplot as plt
-from ProblemCs import *
+import dolfin
+
+import matplotlib.pyplot as plt
+from .ProblemCs import *
 
 
 # TODO calculate_detF_F22, calculate_detF etc... delete code replication
+
 
 class CIterEnergyInfo:
     def __init__(self, Pi, maxIter):  # fun = 'all_info' or 'info'
@@ -33,22 +36,23 @@ class CIterEnergyInfo:
         en = self._energy[:N]
         en[en > en[0]] = en[0]
         plt.plot(en)
-        plt.xlabel('iteration')
-        plt.title('energy per iteration')
-        plt.savefig(folder_name + run_info + 'energy_pIteration' +'.png')
+        plt.xlabel("iteration")
+        plt.title("energy per iteration")
+        plt.savefig(folder_name + run_info + "energy_pIteration" + ".png")
         plt.close(fig)
 
         return
 
     def get_energy_val(self):
-        return self._energy[self._N-1]
+        return self._energy[self._N - 1]
+
 
 class CIterAllInfo(CIterEnergyInfo):
     def __init__(self, problem, maxIter):  # fun = 'all_info' or 'info'
         CIterEnergyInfo.__init__(self, problem.Pi, maxIter)
         self._J = problem.getJ()
         self._F = problem.getF()
-        self._V0 =problem.getV0()
+        self._V0 = problem.getV0()
         self._min_det = np.zeros(maxIter)
         self._l2error_mat = np.zeros(maxIter)
         self._mesh = problem.domain.get_mesh()
@@ -63,56 +67,65 @@ class CIterAllInfo(CIterEnergyInfo):
 
         return detF
 
-
     def create_plots(self, run_info, folder_name):
         N = self._N
 
         A, B = self._min_det[:N], self._l2error_mat[:N]
-        self._plot(A, B, ['detF min', 'l2 error'], 'det min and l2 error per iteration',
-            folder_name + run_info + 'det_error_pIteration' +'.png')
+        self._plot(
+            A,
+            B,
+            ["detF min", "l2 error"],
+            "det min and l2 error per iteration",
+            folder_name + run_info + "det_error_pIteration" + ".png",
+        )
 
-        y1 = np.log(self._min_det[:N] +abs(A.min()) + 0.5)
+        y1 = np.log(self._min_det[:N] + abs(A.min()) + 0.5)
         y2 = np.log(self._l2error_mat[:N] + abs(B.min()) + 0.5)
-        self._plot(y1, y2, ['log_detF min', 'log_l2 error'],
-         '(log) det min and l2 error per iteration',
-         folder_name + run_info + 'log_det_error_pIteration' +'.png')
+        self._plot(
+            y1,
+            y2,
+            ["log_detF min", "log_l2 error"],
+            "(log) det min and l2 error per iteration",
+            folder_name + run_info + "log_det_error_pIteration" + ".png",
+        )
 
         fig = plt.figure()
         plt.plot(self._energy[:N])
-        plt.xlabel('iteration')
-        plt.title('energy per iteration')
-        plt.savefig(folder_name + run_info + 'energy_pIteration' +'.png')
+        plt.xlabel("iteration")
+        plt.title("energy per iteration")
+        plt.savefig(folder_name + run_info + "energy_pIteration" + ".png")
         plt.close(fig)
 
         return
 
     def _plot(self, y1, y2, legend, title, fig_name):
         N = self._N
-        x= np.linspace(1, N, N)
+        x = np.linspace(1, N, N)
 
         fig = plt.figure()
         plt.plot(x, y1, x, y2)
-        plt.ylim([np.min([y1, y2])-1, np.max([y1, y2])+1] )
-        plt.xlabel('iteration')
-        plt.title(title) #
+        plt.ylim([np.min([y1, y2]) - 1, np.max([y1, y2]) + 1])
+        plt.xlabel("iteration")
+        plt.title(title)  #
         plt.legend(legend)
         plt.savefig(fig_name)
         plt.close(fig)
 
+
 def calculate_detF_F22(F, J, V0):
     detF = project(J, V0)
-    F22 =  project(F[1,1], V0)
+    F22 = project(F[1, 1], V0)
 
     return detF, F22
 
 
-
 def calculate_detF_F22_F11(F, J, V0):
     detF = project(J, V0)
-    F22 =  project(F[1,1], V0)
-    F11 =  project(F[0,0], V0)
+    F22 = project(F[1, 1], V0)
+    F11 = project(F[0, 0], V0)
 
     return detF, F22, F11
+
 
 def calculate_detF(J, V0):
     detF = project(J, V0)
@@ -121,37 +134,36 @@ def calculate_detF(J, V0):
 
 
 def calculate_dens(u, J, el_order, V0, mesh, V2):
-        meshy = Mesh(mesh)
+    meshy = Mesh(mesh)
 
-        # fix function space
-        W = FunctionSpace(meshy, 'DG', 0)
-        J1 = project(J, V0)
-        V_dens = FunctionSpace(mesh, 'DG', el_order-1)
-        dens_undef = project(1.0 / J1, V_dens)
-        dens = project(1.0 / J1, W)
-        V = VectorFunctionSpace(meshy, 'CG', 1)
+    # fix function space
+    W = FunctionSpace(meshy, "DG", 0)
+    J1 = project(J, V0)
+    V_dens = FunctionSpace(mesh, "DG", el_order - 1)
+    dens_undef = project(1.0 / J1, V_dens)
+    dens = project(1.0 / J1, W)
+    V = VectorFunctionSpace(meshy, "CG", 1)
 
-        u2 = Function(V2)
-        u2.vector()[:] = u.vector().get_local()
-        u0 =  project(u2, V)
-        try:
-            ALE.move(meshy,u0)
-        except: #dolfin_version() <= '1.6.0'
-            meshy.move(u0)
+    u2 = Function(V2)
+    u2.vector()[:] = u.vector().get_local()
+    u0 = project(u2, V)
+    try:
+        ALE.move(meshy, u0)
+    except:  # dolfin.__version__ <= '1.6.0'
+        meshy.move(u0)
 
-        return dens, dens_undef, V_dens
+    return dens, dens_undef, V_dens
 
 
 def calculate_u_norms(u, J, el_order, V0, mesh, V2):
     meshy = Mesh(mesh)
 
-
     # fix function space
-    V_norm_u = FunctionSpace(mesh, 'CG', el_order)
+    V_norm_u = FunctionSpace(mesh, "CG", el_order)
     u_norm = project(sqrt(inner(u, u)), V_norm_u)
-    u_norm_def = project(sqrt(inner(u, u)), FunctionSpace(meshy, 'CG', 1))
+    u_norm_def = project(sqrt(inner(u, u)), FunctionSpace(meshy, "CG", 1))
 
-    V = VectorFunctionSpace(meshy, 'CG', 1)
+    V = VectorFunctionSpace(meshy, "CG", 1)
     # V2 = VectorFunctionSpace(meshy, 'CG', el_order)
 
     u2 = Function(V2)
@@ -159,29 +171,12 @@ def calculate_u_norms(u, J, el_order, V0, mesh, V2):
     u0 = project(u2, V)
 
     try:
-        ALE.move(meshy,u0)
-    except: #dolfin_version() <= '1.6.0'
-            meshy.move(u0)
-    
-    
+        ALE.move(meshy, u0)
+    except:  # dolfin.__version__ <= '1.6.0'
+        meshy.move(u0)
+
     return u_norm, u_norm_def, meshy, V_norm_u
 
-
-def calculate_deformed_displ(u, mesh):
-    meshy = Mesh(mesh)
-    V = VectorFunctionSpace(meshy, 'CG', 1)
-    u_def =interpolate(u, V)
-
-    
-    u0 = project(u, V)
-
-    try:
-        ALE.move(meshy,u0)
-    except: #dolfin_version() <= '1.6.0'
-            meshy.move(u0)
-    
-    u_def.rename('u', 'u')
-    return u_def
 
 def get_eig2D(hes):
     mesh = hes.function_space().mesh()
@@ -189,22 +184,41 @@ def get_eig2D(hes):
     S01_ = hes.sub(1)
     S11_ = hes.sub(3)
 
-    if dolfin_version() >= '2016.2.0':
-        eig = project(Expression(
-            ("sqrt(0.5*(S00+S11-sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))", \
-             "sqrt(0.5*(S00+S11+sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))"), \
-            S00=S00_, S01=S01_, S11=S11_, degree=2), VectorFunctionSpace(mesh, 'DG', 0))
+    if dolfin.__version__ >= "2016.2.0":
+        eig = project(
+            Expression(
+                (
+                    "sqrt(0.5*(S00+S11-sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))",
+                    "sqrt(0.5*(S00+S11+sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))",
+                ),
+                S00=S00_,
+                S01=S01_,
+                S11=S11_,
+                degree=2,
+            ),
+            VectorFunctionSpace(mesh, "DG", 0),
+        )
     else:
-        eig = project(Expression(
-            ("sqrt(0.5*(S00+S11-sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))", \
-                              "sqrt(0.5*(S00+S11+sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))"), \
-                             S00=S00_, S01=S01_, S11=S11_), VectorFunctionSpace(mesh, 'DG', 0))
+        eig = project(
+            Expression(
+                (
+                    "sqrt(0.5*(S00+S11-sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))",
+                    "sqrt(0.5*(S00+S11+sqrt((S00-S11)*(S00-S11)+4.*S01*S01)))",
+                ),
+                S00=S00_,
+                S01=S01_,
+                S11=S11_,
+            ),
+            VectorFunctionSpace(mesh, "DG", 0),
+        )
     eig2, eig1 = split(eig)
-    eig1 = project(eig1, FunctionSpace(mesh, 'DG', 0));
-    eig2 = project(eig2, FunctionSpace(mesh, 'DG', 0));
-    eig1.rename('lambda1', 'lambda1'); eig2.rename('lambda2', 'lambda2')
+    eig1 = project(eig1, FunctionSpace(mesh, "DG", 0))
+    eig2 = project(eig2, FunctionSpace(mesh, "DG", 0))
+    eig1.rename("lambda1", "lambda1")
+    eig2.rename("lambda2", "lambda2")
 
     return eig1, eig2
+
 
 # def calculate_detF_F22(mesh, u):
 #     V0 = FunctionSpace(mesh, "DG", 0)
@@ -236,4 +250,3 @@ def get_eig2D(hes):
 #
 #     return  np.linalg.det(F0), F0[1,1] #np.trace(F0)
 #
-
